@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make deps:*)",
+      "Bash(make:*)",
+      "Bash(make debug:*)",
+      "Bash(./snake_game:*)",
+      "Bash(echo:*)"
+    ]
+  }
+}

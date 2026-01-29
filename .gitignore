@@ -1,0 +1,32 @@
+# Compiled object files
+*.o
+*.obj
+
+# Executable files
+*.exe
+*.out
+*.app
+
+# Dependencies
+*.a
+*.so
+*.dylib
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build directories
+build/
+dist/
+bin/
+obj/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+snake_game
