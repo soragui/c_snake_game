@@ -96,14 +96,14 @@ void ui_draw_border(int width, int height, int offset_x, int offset_y) {
 
     // Draw horizontal borders
     for (int x = offset_x; x < offset_x + width; x++) {
-        mvaddch(offset_y, x, '#');
-        mvaddch(offset_y + height - 1, x, '#');
+        mvaddch(offset_y, x, '=');
+        mvaddch(offset_y + height - 1, x, '=');
     }
 
     // Draw vertical borders
     for (int y = offset_y; y < offset_y + height; y++) {
-        mvaddch(y, offset_x, '#');
-        mvaddch(y, offset_x + width - 1, '#');
+        mvaddch(y, offset_x, '|');
+        mvaddch(y, offset_x + width - 1, '|');
     }
 
     attroff(COLOR_PAIR(COLOR_WALL));

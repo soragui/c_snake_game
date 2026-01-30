@@ -43,6 +43,7 @@ int score_load_high_score(void) {
 }
 
 void score_save_high_score(int score) {
+    // create data dir on the first time
     FILE* file = fopen(HIGHSCORE_FILE, "w");
     if (!file) {
         return; // Failed to open file for writing

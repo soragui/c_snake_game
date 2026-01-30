@@ -2,6 +2,8 @@
 
 A classic Snake game implemented in C using ncurses, featuring a modular architecture with function pointers for extensibility.
 
+![Snake game starter](images/game_start.png "Snake Game")
+
 ## Features
 
 - **Classic Snake Gameplay**: Control the snake with arrow keys, eat food to grow, avoid walls and self-collision
