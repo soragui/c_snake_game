@@ -60,16 +60,31 @@ static state_handler_t game_over_handler = {
     .exit = game_over_screen_exit
 };
 
+/******************************************************************************
+ * @brief 初始化 UI 系统
+ * 
+ * 初始化 ncurses、设置颜色、初始化输入系统
+ *****************************************************************************/
 void ui_init(void) {
     initscr();
     ui_setup_colors();
     input_init();
 }
 
+/******************************************************************************
+ * @brief 清理 UI 系统
+ * 
+ * 结束 ncurses 模式，恢复终端正常状态
+ *****************************************************************************/
 void ui_cleanup(void) {
     endwin();
 }
 
+/******************************************************************************
+ * @brief 设置颜色对
+ * 
+ * 定义游戏使用的颜色对：蛇、食物、墙壁、UI、高亮
+ *****************************************************************************/
 void ui_setup_colors(void) {
     if (has_colors()) {
         start_color();
@@ -83,14 +98,30 @@ void ui_setup_colors(void) {
     }
 }
 
+/******************************************************************************
+ * @brief 清屏
+ *****************************************************************************/
 void ui_clear_screen(void) {
     clear();
 }
 
+/******************************************************************************
+ * @brief 刷新屏幕显示
+ *****************************************************************************/
 void ui_refresh_screen(void) {
     refresh();
 }
 
+/******************************************************************************
+ * @brief 绘制游戏区域边框
+ * 
+ * 使用 '=' 绘制水平边框，'|' 绘制垂直边框
+ * 
+ * @param width 区域宽度
+ * @param height 区域高度
+ * @param offset_x X 偏移量
+ * @param offset_y Y 偏移量
+ *****************************************************************************/
 void ui_draw_border(int width, int height, int offset_x, int offset_y) {
     attron(COLOR_PAIR(COLOR_WALL));
 
@@ -109,6 +140,14 @@ void ui_draw_border(int width, int height, int offset_x, int offset_y) {
     attroff(COLOR_PAIR(COLOR_WALL));
 }
 
+/******************************************************************************
+ * @brief 在指定位置绘制文本
+ * 
+ * @param x X 坐标
+ * @param y Y 坐标
+ * @param text 要绘制的文本
+ * @param color_pair 颜色对编号，0 表示不使用颜色
+ *****************************************************************************/
 void ui_draw_text(int x, int y, const char* text, int color_pair) {
     if (color_pair > 0) {
         attron(COLOR_PAIR(color_pair));
@@ -121,6 +160,13 @@ void ui_draw_text(int x, int y, const char* text, int color_pair) {
     }
 }
 
+/******************************************************************************
+ * @brief 在指定行居中绘制文本
+ * 
+ * @param y Y 坐标（行）
+ * @param text 要绘制的文本
+ * @param color_pair 颜色对编号
+ *****************************************************************************/
 void ui_draw_text_centered(int y, const char* text, int color_pair) {
     int term_width, term_height;
     getmaxyx(stdscr, term_height, term_width);
@@ -129,6 +175,14 @@ void ui_draw_text_centered(int y, const char* text, int color_pair) {
     ui_draw_text(x, y, text, color_pair);
 }
 
+/******************************************************************************
+ * @brief 在指定位置绘制字符
+ * 
+ * @param x X 坐标
+ * @param y Y 坐标
+ * @param ch 要绘制的字符
+ * @param color_pair 颜色对编号
+ *****************************************************************************/
 void ui_draw_char(int x, int y, char ch, int color_pair) {
     if (color_pair > 0) {
         attron(COLOR_PAIR(color_pair));
@@ -141,6 +195,13 @@ void ui_draw_char(int x, int y, char ch, int color_pair) {
     }
 }
 
+/******************************************************************************
+ * @brief 绘制蛇
+ * 
+ * 头部用 'O' 表示，身体用 '#' 表示
+ * 
+ * @param snake 蛇实例指针
+ *****************************************************************************/
 void ui_draw_snake(snake_t* snake) {
     if (!snake) return;
 
@@ -155,6 +216,13 @@ void ui_draw_snake(snake_t* snake) {
     }
 }
 
+/******************************************************************************
+ * @brief 绘制食物
+ * 
+ * 只绘制处于激活状态的食物
+ * 
+ * @param food 食物实例指针
+ *****************************************************************************/
 void ui_draw_food(food_t* food) {
     if (!food || !food->active) return;
 
@@ -162,6 +230,13 @@ void ui_draw_food(food_t* food) {
                 food->type->symbol, food->type->color_pair);
 }
 
+/******************************************************************************
+ * @brief 绘制分数信息
+ * 
+ * 显示当前分数、历史最高分、当前等级
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void ui_draw_score(game_t* game) {
     if (!game) return;
 
@@ -178,6 +253,13 @@ void ui_draw_score(game_t* game) {
     ui_draw_text(2, 3, level_text, COLOR_UI);
 }
 
+/******************************************************************************
+ * @brief 绘制开始屏幕
+ * 
+ * 显示游戏标题、难度选择菜单、操作提示
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void ui_render_start_screen(game_t* game) {
     if (!game) return;
 
@@ -213,6 +295,13 @@ void ui_render_start_screen(game_t* game) {
     ui_refresh_screen();
 }
 
+/******************************************************************************
+ * @brief 绘制游戏屏幕
+ * 
+ * 绘制游戏边框、分数、蛇、食物、操作提示
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void ui_render_game_screen(game_t* game) {
     if (!game) return;
 
@@ -240,6 +329,13 @@ void ui_render_game_screen(game_t* game) {
     ui_refresh_screen();
 }
 
+/******************************************************************************
+ * @brief 绘制游戏结束屏幕
+ * 
+ * 显示游戏结束标题、最终分数、历史最高分、重新开始选项
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void ui_render_game_over_screen(game_t* game) {
     if (!game) return;
 
@@ -372,19 +468,38 @@ static void game_over_screen_exit(game_t* game) {
     // Nothing to clean up
 }
 
-// Public getter functions for state handlers
+/******************************************************************************
+ * @brief 获取开始屏幕状态处理器
+ * 
+ * @return state_handler_t* 开始屏幕处理器指针
+ *****************************************************************************/
 state_handler_t* get_start_screen_handler(void) {
     return &start_handler;
 }
 
+/******************************************************************************
+ * @brief 获取游戏屏幕状态处理器
+ * 
+ * @return state_handler_t* 游戏屏幕处理器指针
+ *****************************************************************************/
 state_handler_t* get_game_screen_handler(void) {
     return &game_handler;
 }
 
+/******************************************************************************
+ * @brief 获取游戏结束屏幕状态处理器
+ * 
+ * @return state_handler_t* 游戏结束屏幕处理器指针
+ *****************************************************************************/
 state_handler_t* get_game_over_handler(void) {
     return &game_over_handler;
 }
 
+/******************************************************************************
+ * @brief 获取 ncurses 渲染器实例
+ * 
+ * @return renderer_t* ncurses 渲染器指针
+ *****************************************************************************/
 renderer_t* get_ncurses_renderer(void) {
     return &ncurses_renderer;
 }

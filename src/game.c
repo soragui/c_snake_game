@@ -17,6 +17,13 @@ static level_config_t level_configs[] = {
     {50,  5, "Extreme", NULL, NULL, 1}      // Level 5
 };
 
+/******************************************************************************
+ * @brief 创建游戏实例
+ * 
+ * 分配并初始化 game_t 结构体，设置所有初始值为默认状态
+ * 
+ * @return game_t* 游戏实例指针，失败返回 NULL
+ *****************************************************************************/
 game_t* game_create(void) {
     game_t* game = malloc(sizeof(game_t));
     if (!game) return NULL;
@@ -43,6 +50,13 @@ game_t* game_create(void) {
     return game;
 }
 
+/******************************************************************************
+ * @brief 销毁游戏实例并释放资源
+ * 
+ * 释放蛇、食物等游戏对象，最后释放 game 结构体本身
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void game_destroy(game_t* game) {
     if (!game) return;
 
@@ -57,6 +71,13 @@ void game_destroy(game_t* game) {
     free(game);
 }
 
+/******************************************************************************
+ * @brief 初始化游戏系统
+ * 
+ * 初始化随机数生成器、分数系统、渲染器，并设置初始状态处理器
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void game_init(game_t* game) {
     if (!game) return;
 
@@ -90,6 +111,17 @@ void game_init(game_t* game) {
     }
 }
 
+/******************************************************************************
+ * @brief 运行游戏主循环
+ * 
+ * 主循环流程:
+ * 1. 处理用户输入
+ * 2. 处理状态转换
+ * 3. 根据时间间隔更新游戏逻辑
+ * 4. 渲染画面
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void game_run(game_t* game) {
     if (!game) return;
 
@@ -157,6 +189,13 @@ void game_run(game_t* game) {
     }
 }
 
+/******************************************************************************
+ * @brief 更新游戏逻辑
+ * 
+ * 调用当前状态处理器的 update 函数来更新游戏状态
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void game_update(game_t* game) {
     if (!game || !game->current_handler) return;
 
@@ -165,6 +204,13 @@ void game_update(game_t* game) {
     }
 }
 
+/******************************************************************************
+ * @brief 渲染游戏画面
+ * 
+ * 调用当前状态处理器的 render 函数来绘制游戏画面
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void game_render(game_t* game) {
     if (!game || !game->current_handler) return;
 
@@ -173,6 +219,14 @@ void game_render(game_t* game) {
     }
 }
 
+/******************************************************************************
+ * @brief 处理用户输入
+ * 
+ * 处理暂停/取消暂停逻辑，然后将输入委托给当前状态处理器
+ * 
+ * @param game 游戏实例指针
+ * @param key 按键值
+ *****************************************************************************/
 void game_handle_input(game_t* game, int key) {
     if (!game || !game->current_handler) return;
 
@@ -191,11 +245,27 @@ void game_handle_input(game_t* game, int key) {
     }
 }
 
+/******************************************************************************
+ * @brief 设置游戏状态
+ * 
+ * 设置下一个游戏状态，状态转换将在下一帧执行
+ * 
+ * @param game 游戏实例指针
+ * @param new_state 新的游戏状态
+ *****************************************************************************/
 void game_set_state(game_t* game, game_state_t new_state) {
     if (!game) return;
     game->next_state = new_state;
 }
 
+/******************************************************************************
+ * @brief 切换游戏难度等级
+ * 
+ * 更改难度等级并重置游戏元素（蛇、食物、分数）
+ * 
+ * @param game 游戏实例指针
+ * @param level 难度等级 (1-5)
+ *****************************************************************************/
 void game_change_level(game_t* game, int level) {
     if (!game || level < 1 || level > get_max_levels()) return;
 
@@ -231,6 +301,14 @@ void game_change_level(game_t* game, int level) {
     }
 }
 
+/******************************************************************************
+ * @brief 获取难度等级配置
+ * 
+ * 根据等级返回对应的配置结构体
+ * 
+ * @param level 难度等级 (1-5)
+ * @return level_config_t* 等级配置指针
+ *****************************************************************************/
 level_config_t* get_level_config(int level) {
     if (level < 1 || level > get_max_levels()) {
         return &level_configs[0]; // Return first level as default
@@ -239,10 +317,22 @@ level_config_t* get_level_config(int level) {
     return &level_configs[level - 1];
 }
 
+/******************************************************************************
+ * @brief 获取最大难度等级数
+ * 
+ * @return int 最大等级数
+ *****************************************************************************/
 int get_max_levels(void) {
     return sizeof(level_configs) / sizeof(level_configs[0]);
 }
 
+/******************************************************************************
+ * @brief 计算游戏区域尺寸
+ * 
+ * 根据终端尺寸计算游戏区域的大小和位置，预留 UI 显示空间
+ * 
+ * @param game 游戏实例指针
+ *****************************************************************************/
 void game_calculate_board_size(game_t* game) {
     if (!game) return;
 
@@ -275,6 +365,13 @@ void game_calculate_board_size(game_t* game) {
     }
 }
 
+/******************************************************************************
+ * @brief 检查点是否在游戏区域边界内
+ * 
+ * @param game 游戏实例指针
+ * @param p 要检查的点
+ * @return bool 在边界内返回 true，否则返回 false
+ *****************************************************************************/
 bool game_is_point_in_bounds(game_t* game, point_t p) {
     if (!game) return false;
 
@@ -284,6 +381,13 @@ bool game_is_point_in_bounds(game_t* game, point_t p) {
             p.y < game->board_offset_y + game->board_height);
 }
 
+/******************************************************************************
+ * @brief 检查点是否在游戏区域边框上
+ * 
+ * @param game 游戏实例指针
+ * @param p 要检查的点
+ * @return bool 在边框上返回 true，否则返回 false
+ *****************************************************************************/
 bool game_is_point_on_border(game_t* game, point_t p) {
     if (!game) return false;
 
