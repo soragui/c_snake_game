@@ -2,12 +2,9 @@
 
 A classic Snake game implemented in C using ncurses, featuring a modular architecture with function pointers for extensibility.
 
-
 ## Game Screenshots
 
 ### Main Menu & Gameplay
-
-![Snake Game Running](snake_game_screenshot.png "Snake Game - In Game")
 
 ![Snake game starter](images/game_start.png "Snake Game")
 
