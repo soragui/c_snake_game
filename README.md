@@ -2,6 +2,8 @@
 
 A classic Snake game implemented in C using ncurses, featuring a modular architecture with function pointers for extensibility.
 
+[中文详细教程](docs/readme.md)
+
 ## Game Screenshots
 
 ### Main Menu & Gameplay
