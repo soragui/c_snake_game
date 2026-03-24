@@ -1,4 +1,5 @@
 #include "snake.h"
+#include "obstacle.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -66,13 +67,13 @@ void snake_destroy(snake_t* snake) {
 
 /******************************************************************************
  * @brief 蛇的正常移动行为
- * 
+ *
  * 根据当前方向移动蛇：
  * 1. 更新方向（防止立即反向）
  * 2. 计算新头部位置
- * 3. 创建新头部段
- * 4. 如果不生长则移除尾部
- * 
+ * 3. 移动尾部段到新的头部位置（重用内存，避免 malloc/free）
+ * 4. 更新头尾指针
+ *
  * @param snake 蛇实例指针
  * @param game 游戏实例指针
  *****************************************************************************/
@@ -88,19 +89,33 @@ void snake_move_normal(snake_t* snake, game_t* game) {
     point_t movement = direction_to_point(snake->direction);
     point_t new_head_pos = point_add(snake->head->position, movement);
 
-    // Create new head segment
-    snake_segment_t* new_head = malloc(sizeof(snake_segment_t));
-    if (!new_head) return; // Memory allocation failed
-
-    new_head->position = new_head_pos;
-    new_head->next = snake->head;
-    snake->head = new_head;
-    snake->length++;
-
-    // Remove tail unless growing
     if (!snake->should_grow) {
-        snake_remove_tail(snake);
+        // Reuse tail segment as new head (avoids malloc/free churn)
+        snake_segment_t* new_head = snake->tail;
+
+        // Update tail to previous segment
+        if (snake->length > 1) {
+            snake_segment_t* new_tail = snake->head;
+            while (new_tail->next && new_tail->next != snake->tail) {
+                new_tail = new_tail->next;
+            }
+            new_tail->next = NULL;
+            snake->tail = new_tail;
+        }
+
+        // Move old tail to new head position
+        new_head->position = new_head_pos;
+        new_head->next = snake->head;
+        snake->head = new_head;
     } else {
+        // Growing: allocate new head segment (tail stays in place)
+        snake_segment_t* new_head = malloc(sizeof(snake_segment_t));
+        if (!new_head) return;
+
+        new_head->position = new_head_pos;
+        new_head->next = snake->head;
+        snake->head = new_head;
+        snake->length++;
         snake->should_grow = false;
     }
 }
@@ -125,6 +140,14 @@ bool snake_check_collision_normal(snake_t* snake, game_t* game) {
     if (!game_is_point_in_bounds(game, head_pos) ||
         game_is_point_on_border(game, head_pos)) {
         return true;
+    }
+
+    // Check obstacle collision (for levels with mazes)
+    if (maze_has_obstacles(game->level)) {
+        maze_t* maze = get_maze_for_level(game->level);
+        if (maze && obstacle_check_collision(maze, head_pos)) {
+            return true;
+        }
     }
 
     // Check self collision (skip head when checking)
@@ -324,4 +347,122 @@ bool snake_head_collides_with_body(snake_t* snake) {
  *****************************************************************************/
 snake_behavior_t* get_normal_snake_behavior(void) {
     return &normal_behavior;
+}
+
+/******************************************************************************
+ * @brief 蛇的环绕移动行为（穿墙模式）
+ *
+ * 根据当前方向移动蛇，当碰到边界时从另一侧穿出：
+ * 1. 更新方向（防止立即反向）
+ * 2. 计算新头部位置
+ * 3. 如果超出边界则从另一侧 wrap
+ * 4. 创建新头部段
+ * 5. 如果不生长则移除尾部
+ *
+ * @param snake 蛇实例指针
+ * @param game 游戏实例指针
+ *****************************************************************************/
+void snake_move_wraparound(snake_t* snake, game_t* game) {
+    if (!snake || !game) return;
+
+    // Update direction (prevent immediate reversal)
+    if (snake->next_direction != opposite_direction(snake->direction)) {
+        snake->direction = snake->next_direction;
+    }
+
+    // Calculate new head position
+    point_t movement = direction_to_point(snake->direction);
+    point_t new_head_pos = point_add(snake->head->position, movement);
+
+    // Wrap around walls
+    if (new_head_pos.x < game->board_offset_x) {
+        new_head_pos.x = game->board_offset_x + game->board_width - 2;
+    } else if (new_head_pos.x >= game->board_offset_x + game->board_width - 1) {
+        new_head_pos.x = game->board_offset_x + 1;
+    }
+
+    if (new_head_pos.y < game->board_offset_y) {
+        new_head_pos.y = game->board_offset_y + game->board_height - 2;
+    } else if (new_head_pos.y >= game->board_offset_y + game->board_height - 1) {
+        new_head_pos.y = game->board_offset_y + 1;
+    }
+
+    // Create new head segment
+    snake_segment_t* new_head = malloc(sizeof(snake_segment_t));
+    if (!new_head) return; // Memory allocation failed
+
+    new_head->position = new_head_pos;
+    new_head->next = snake->head;
+    snake->head = new_head;
+    snake->length++;
+
+    // Remove tail unless growing
+    if (!snake->should_grow) {
+        snake_remove_tail(snake);
+    } else {
+        snake->should_grow = false;
+    }
+}
+
+/******************************************************************************
+ * @brief 蛇的环绕碰撞检测行为（穿墙模式）
+ *
+ * 只检测自身碰撞，不检测墙壁碰撞（因为可以穿墙）
+ *
+ * @param snake 蛇实例指针
+ * @param game 游戏实例指针
+ * @return bool 发生碰撞返回 true，否则返回 false
+ *****************************************************************************/
+bool snake_check_collision_wraparound(snake_t* snake, game_t* game) {
+    if (!snake || !game) return false;  // Never collide with walls in wraparound mode
+
+    point_t head_pos = snake_get_head_position(snake);
+
+    // Check obstacle collision (for levels with mazes)
+    // Note: wraparound levels (6-10) don't have mazes currently
+    if (maze_has_obstacles(game->level)) {
+        maze_t* maze = get_maze_for_level(game->level);
+        if (maze && obstacle_check_collision(maze, head_pos)) {
+            return true;
+        }
+    }
+
+    // Only check self collision (skip head when checking)
+    snake_segment_t* current = snake->head->next;
+    while (current) {
+        if (point_equals(head_pos, current->position)) {
+            return true;
+        }
+        current = current->next;
+    }
+
+    return false;
+}
+
+/******************************************************************************
+ * @brief 蛇的环绕生长行为（穿墙模式）
+ *
+ * 标记蛇应该在下次移动时生长（不移除尾部）
+ *
+ * @param snake 蛇实例指针
+ *****************************************************************************/
+void snake_grow_wraparound(snake_t* snake) {
+    if (!snake) return;
+    snake->should_grow = true;
+}
+
+// Static wraparound behavior instance
+static snake_behavior_t wraparound_behavior = {
+    .move_snake = snake_move_wraparound,
+    .check_collision = snake_check_collision_wraparound,
+    .grow = snake_grow_wraparound
+};
+
+/******************************************************************************
+ * @brief 获取环绕蛇行为配置（穿墙模式）
+ *
+ * @return snake_behavior_t* 环绕行为配置指针
+ *****************************************************************************/
+snake_behavior_t* get_wraparound_snake_behavior(void) {
+    return &wraparound_behavior;
 }

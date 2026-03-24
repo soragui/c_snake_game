@@ -65,9 +65,11 @@ struct game {
     game_state_t next_state;
 
     snake_t* snake;
+    snake_t* snake2;      // Second player's snake (2-player mode)
     food_t* food;
 
     int score;
+    int score2;           // Second player's score (2-player mode)
     int high_score;
     int level;
 
@@ -82,6 +84,7 @@ struct game {
 
     bool running;
     bool paused;
+    bool two_player;      // true = 2-player mode, false = 1-player mode
 
     // Menu state
     int selected_level;

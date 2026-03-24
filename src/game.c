@@ -5,17 +5,44 @@
 #include "ui.h"
 #include "input.h"
 #include "utils.h"
+#include "replay.h"
 #include <stdlib.h>
 #include <stdio.h>
 
 // Level configurations
-static level_config_t level_configs[] = {
-    {200, 1, "Easy", NULL, NULL, 1},        // Level 1
-    {150, 2, "Medium", NULL, NULL, 1},      // Level 2
-    {100, 3, "Hard", NULL, NULL, 1},        // Level 3
-    {75,  4, "Very Hard", NULL, NULL, 1},   // Level 4
-    {50,  5, "Extreme", NULL, NULL, 1}      // Level 5
+// Classic levels (normal behavior)
+static level_config_t level_configs_classic[] = {
+    {200, 1, "Easy", NULL, NULL, 1},
+    {150, 2, "Medium", NULL, NULL, 1},
+    {100, 3, "Hard", NULL, NULL, 1},
+    {75,  4, "Very Hard", NULL, NULL, 1},
+    {50,  5, "Extreme", NULL, NULL, 1}
 };
+
+// Wraparound levels (wall-crossing behavior)
+static level_config_t level_configs_wraparound[] = {
+    {200, 1, "Easy (Wrap)", NULL, NULL, 1},
+    {150, 2, "Medium (Wrap)", NULL, NULL, 1},
+    {100, 3, "Hard (Wrap)", NULL, NULL, 1},
+    {75,  4, "Very Hard (Wrap)", NULL, NULL, 1},
+    {50,  5, "Extreme (Wrap)", NULL, NULL, 1}
+};
+
+// All levels (for selection)
+static level_config_t* all_level_configs[] = {
+    &level_configs_classic[0],
+    &level_configs_classic[1],
+    &level_configs_classic[2],
+    &level_configs_classic[3],
+    &level_configs_classic[4],
+    &level_configs_wraparound[0],
+    &level_configs_wraparound[1],
+    &level_configs_wraparound[2],
+    &level_configs_wraparound[3],
+    &level_configs_wraparound[4]
+};
+
+static int num_levels = sizeof(all_level_configs) / sizeof(all_level_configs[0]);
 
 /******************************************************************************
  * @brief 创建游戏实例
@@ -32,8 +59,10 @@ game_t* game_create(void) {
     game->state = STATE_START_SCREEN;
     game->next_state = STATE_START_SCREEN;
     game->snake = NULL;
+    game->snake2 = NULL;
     game->food = NULL;
     game->score = 0;
+    game->score2 = 0;
     game->high_score = 0;
     game->level = 1;
     game->selected_level = 1;
@@ -46,6 +75,7 @@ game_t* game_create(void) {
     game->renderer = NULL;
     game->running = true;
     game->paused = false;
+    game->two_player = false;  // Default to 1-player mode
 
     return game;
 }
@@ -62,6 +92,10 @@ void game_destroy(game_t* game) {
 
     if (game->snake) {
         snake_destroy(game->snake);
+    }
+
+    if (game->snake2) {
+        snake_destroy(game->snake2);
     }
 
     if (game->food) {
@@ -154,7 +188,7 @@ void game_run(game_t* game) {
                     game->current_handler = get_game_over_handler();
                     break;
                 case STATE_PAUSED:
-                    // Keep current handler but stop updating
+                    game->current_handler = get_pause_screen_handler();
                     break;
                 case STATE_EXIT:
                     game->running = false;
@@ -274,13 +308,17 @@ void game_change_level(game_t* game, int level) {
 
     // Reset game elements
     score_reset(game);
+    game->score2 = 0;
 
-    // Destroy existing snake and food
+    // Destroy existing snakes and food
     if (game->snake) {
         snake_destroy(game->snake);
         game->snake = NULL;
     }
-
+    if (game->snake2) {
+        snake_destroy(game->snake2);
+        game->snake2 = NULL;
+    }
     if (game->food) {
         food_destroy(game->food);
         game->food = NULL;
@@ -289,41 +327,75 @@ void game_change_level(game_t* game, int level) {
     // Recalculate board size in case terminal was resized
     game_calculate_board_size(game);
 
-    // Create new snake at center of board
-    int start_x = game->board_offset_x + game->board_width / 2;
-    int start_y = game->board_offset_y + game->board_height / 2;
-    game->snake = snake_create(start_x, start_y, DIR_RIGHT);
+    // Create player 1 snake at center-left
+    int start_x1 = game->board_offset_x + game->board_width / 3;
+    int start_y1 = game->board_offset_y + game->board_height / 2;
+    game->snake = snake_create(start_x1, start_y1, DIR_RIGHT);
+
+    // Set snake behavior based on level config
+    if (game->snake && game->level_config && game->level_config->behavior) {
+        game->snake->behavior = game->level_config->behavior;
+    }
+
+    // Create player 2 snake for 2-player mode at center-right
+    if (game->two_player) {
+        int start_x2 = game->board_offset_x + 2 * game->board_width / 3;
+        int start_y2 = game->board_offset_y + game->board_height / 2;
+        game->snake2 = snake_create(start_x2, start_y2, DIR_LEFT);
+
+        if (game->snake2 && game->level_config && game->level_config->behavior) {
+            game->snake2->behavior = game->level_config->behavior;
+        }
+    }
 
     // Create and spawn food
     game->food = food_create();
     if (game->food) {
         food_spawn(game->food, game);
     }
+
+    // Start recording replay
+    replay_t* replay = replay_get_instance();
+    replay_start_recording(replay, level, game->two_player);
 }
 
 /******************************************************************************
  * @brief 获取难度等级配置
- * 
- * 根据等级返回对应的配置结构体
- * 
- * @param level 难度等级 (1-5)
+ *
+ * 根据等级返回对应的配置结构体：
+ * - Level 1-5: Classic modes (normal behavior)
+ * - Level 6-10: Wraparound modes (wall-crossing behavior)
+ *
+ * @param level 难度等级 (1-10)
  * @return level_config_t* 等级配置指针
  *****************************************************************************/
 level_config_t* get_level_config(int level) {
     if (level < 1 || level > get_max_levels()) {
-        return &level_configs[0]; // Return first level as default
+        return all_level_configs[0]; // Return first level as default
     }
 
-    return &level_configs[level - 1];
+    level_config_t* config = all_level_configs[level - 1];
+
+    // Set behavior based on level (1-5: classic, 6-10: wraparound)
+    if (level <= 5) {
+        config->behavior = get_normal_snake_behavior();
+    } else {
+        config->behavior = get_wraparound_snake_behavior();
+    }
+
+    // Set food types
+    config->food_types = get_food_types_for_level(level, &config->num_food_types);
+
+    return config;
 }
 
 /******************************************************************************
  * @brief 获取最大难度等级数
- * 
- * @return int 最大等级数
+ *
+ * @return int 最大等级数 (10 = 5 classic + 5 wraparound)
  *****************************************************************************/
 int get_max_levels(void) {
-    return sizeof(level_configs) / sizeof(level_configs[0]);
+    return num_levels;
 }
 
 /******************************************************************************

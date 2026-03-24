@@ -31,6 +31,10 @@ void snake_move_normal(snake_t* snake, game_t* game);
 bool snake_check_collision_normal(snake_t* snake, game_t* game);
 void snake_grow_normal(snake_t* snake);
 
+void snake_move_wraparound(snake_t* snake, game_t* game);
+bool snake_check_collision_wraparound(snake_t* snake, game_t* game);
+void snake_grow_wraparound(snake_t* snake);
+
 // Snake operations
 void snake_set_direction(snake_t* snake, direction_t new_dir);
 void snake_add_segment(snake_t* snake, point_t position);
@@ -44,5 +48,6 @@ bool snake_head_collides_with_body(snake_t* snake);
 
 // Behavior configurations
 snake_behavior_t* get_normal_snake_behavior(void);
+snake_behavior_t* get_wraparound_snake_behavior(void);
 
 #endif // SNAKE_H

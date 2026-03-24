@@ -1,4 +1,5 @@
 #include "game.h"
+#include "replay.h"
 #include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>

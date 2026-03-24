@@ -37,6 +37,7 @@ void ui_draw_level_selector(int selected_level);
 state_handler_t* get_start_screen_handler(void);
 state_handler_t* get_game_screen_handler(void);
 state_handler_t* get_game_over_handler(void);
+state_handler_t* get_pause_screen_handler(void);
 
 // Renderer implementation
 renderer_t* get_ncurses_renderer(void);

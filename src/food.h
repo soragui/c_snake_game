@@ -27,9 +27,15 @@ bool food_is_position_valid(game_t* game, point_t position);
 
 // Food type functions
 void food_apple_on_eaten(game_t* game, food_t* food);
+void food_bonus_on_eaten(game_t* game, food_t* food);
+void food_poison_on_eaten(game_t* game, food_t* food);
+void food_speed_on_eaten(game_t* game, food_t* food);
 
 // Food type configurations
 food_type_t* get_apple_food_type(void);
+food_type_t* get_bonus_food_type(void);
+food_type_t* get_poison_food_type(void);
+food_type_t* get_speed_food_type(void);
 food_type_t* get_food_types_for_level(int level, int* count);
 
 #endif // FOOD_H
